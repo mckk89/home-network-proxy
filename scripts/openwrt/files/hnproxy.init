@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+# 家庭网络反代 OpenWrt Init Script
+
+START=99
+STOP=10
+USE_PROCD=1
+PROG=/usr/bin/hnproxy
+CONFIG=/etc/hnproxy/hnproxy.conf
+LOG_FILE=/var/log/hnproxy.log
+
+start_service() {
+    procd_open_instance
+    procd_set_param command "$PROG" "-c" "$CONFIG"
+    procd_set_param respawn 5 3 0
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_set_param user root
+    procd_close_instance
+}
+
+stop_service() {
+    killall -q hnproxy 2>/dev/null || true
+}
+
+reload_service() {
+    stop_service
+    start_service
+}

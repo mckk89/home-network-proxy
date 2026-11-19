@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - Web 终端</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 0; }
+        .terminal-container { height: 600px; background: #1e1e1e; border-radius: 0 0 12px 12px; overflow: hidden; position: relative; }
+        .terminal-header { background: #2d2d2d; padding: 8px 16px; border-bottom: 1px solid #3e3e3e; display: flex; justify-content: space-between; align-items: center; }
+        .terminal-title { color: #ccc; font-size: 13px; font-family: monospace; }
+        .terminal-actions { display: flex; gap: 8px; }
+        .btn { padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-secondary { background: #3e3e3e; color: #ccc; border: 1px solid #555; }
+        .btn-danger { background: #e74c3c; color: white; }
+        #terminal { height: 100%; width: 100%; }
+        .xterm { height: 100% !important; }
+        .xterm-viewport { background: #1e1e1e !important; }
+        .xterm-screen { background: #1e1e1e !important; }
+        .xterm-cursor { background: #fff !important; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .info-notice { background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: #e65100; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+    <!-- xterm.js CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">工具与自动化</div><a href="/docker" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>Docker 管理</a><a href="/terminal" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>Web 终端</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h1>Web 终端</h1>
+                <div class="terminal-actions">
+                    <button class="btn btn-primary" onclick="connectTerminal()">连接</button>
+                    <button class="btn btn-secondary" onclick="disconnectTerminal()">断开</button>
+                    <button class="btn btn-danger" onclick="clearTerminal()">清屏</button>
+                </div>
+            </header>
+
+            <div id="alert" class="alert"></div>
+
+            <div class="info-notice">
+                <strong>⚠️ 注意：</strong> Web 终端功能需要后端 WebSocket 支持。
+                当前为演示界面，实际使用需后端实现 <code>/api/terminal/ws</code> WebSocket 端点。
+                建议使用 SSH 客户端或 Docker exec 进行实际终端操作。
+            </div>
+
+            <!-- 终端容器 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>💻 终端会话</h3>
+                    <div class="terminal-actions">
+                        <select id="shellSelect" style="padding:6px 10px;border:1px solid #555;background:#2d2d2d;color:#ccc;border-radius:4px;">
+                            <option value="/bin/bash">bash</option>
+                            <option value="/bin/sh">sh</option>
+                            <option value="/bin/zsh">zsh</option>
+                            <option value="/bin/fish">fish</option>
+                        </select>
+                        <span id="connectionStatus" style="color:#e74c3c;font-size:12px;">未连接</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="terminal-container">
+                        <div class="terminal-header">
+                            <span class="terminal-title">家庭网络反代 Web Terminal</span>
+                            <div class="terminal-actions">
+                                <button class="btn btn-secondary" onclick="sendCtrlC()">Ctrl+C</button>
+                                <button class="btn btn-secondary" onclick="sendCtrlD()">Ctrl+D</button>
+                                <button class="btn btn-secondary" onclick="clearTerminal()">清屏</button>
+                            </div>
+                        </div>
+                        <div id="terminal"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let term = null;
+        let ws = null;
+        const fitAddon = new FitAddon.FitAddon();
+        const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        function updateStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            status.textContent = connected ? '已连接' : '未连接';
+            status.style.color = connected ? '#4caf50' : '#e74c3c';
+        }
+
+        // 初始化终端
+        function initTerminal() {
+            if (term) return;
+            
+            term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#1e1e1e',
+                    foreground: '#d4d4d4',
+                    cursor: '#ffffff',
+                    selection: '#264f78',
+                    black: '#1e1e1e',
+                    red: '#f44747',
+                    green: '#6a9955',
+                    yellow: '#dcdcaa',
+                    blue: '#569cd6',
+                    magenta: '#c586c0',
+                    cyan: '#4ec9b0',
+                    white: '#d4d4d4',
+                    brightBlack: '#858585',
+                    brightRed: '#f44747',
+                    brightGreen: '#6a9955',
+                    brightYellow: '#dcdcaa',
+                    brightBlue: '#569cd6',
+                    brightMagenta: '#c586c0',
+                    brightCyan: '#4ec9b0',
+                    brightWhite: '#ffffff'
+                },
+                fontFamily: '"Monaco", "Menlo", "Ubuntu Mono", monospace',
+                fontSize: 14,
+                lineHeight: 1.5,
+                letterSpacing: 0,
+                allowTransparency: false,
+                scrollback: 10000,
+                convertEol: true
+            });
+
+            term.loadAddon(fitAddon);
+            term.loadAddon(webLinksAddon);
+            
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            
+            // 处理窗口大小变化
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows}));
+                }
+            });
+
+            // 处理输入
+            term.onData(data => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'input', data: data}));
+                }
+            });
+
+            // 处理粘贴
+            term.onBinary(data => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'input', data: data}));
+                }
+            });
+
+            term.write('\r\n\x1b[1;32mWelcome to 家庭网络反代 Web Terminal\x1b[0m\r\n');
+            term.write('\x1b[2mConnect to backend WebSocket to start session...\x1b[0m\r\n\r\n');
+            term.write('$ ');
+        }
+
+        // 连接终端
+        function connectTerminal() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                showAlert('已连接', 'success');
+                return;
+            }
+
+            initTerminal();
+            
+            const shell = document.getElementById('shellSelect').value;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws?shell=${encodeURIComponent(shell)}`;
+            
+            term.write(`\r\n\x1b[2mConnecting to ${wsUrl}...\x1b[0m\r\n`);
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    updateStatus(true);
+                    term.write('\r\n\x1b[1;32mConnected!\x1b[0m\r\n$ ');
+                    showAlert('终端连接成功', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'output') {
+                            term.write(msg.data);
+                        } else if (msg.type === 'error') {
+                            term.write(`\r\n\x1b[1;31mError: ${msg.data}\x1b[0m\r\n$ `);
+                        }
+                    } catch {
+                        // 兼容纯文本输出
+                        term.write(event.data);
+                    }
+                };
+                
+                ws.onclose = () => {
+                    updateStatus(false);
+                    term.write('\r\n\x1b[1;33mDisconnected\x1b[0m\r\n$ ');
+                    showAlert('终端连接已断开', 'error');
+                };
+                
+                ws.onerror = (err) => {
+                    term.write('\r\n\x1b[1;31mConnection error\x1b[0m\r\n$ ');
+                    updateStatus(false);
+                    showAlert('连接错误: ' + err.message, 'error');
+                };
+            } catch (err) {
+                term.write(`\r\n\x1b[1;31mFailed to connect: ${err.message}\x1b[0m\r\n$ `);
+                showAlert('连接失败: ' + err.message, 'error');
+            }
+        }
+
+        // 断开终端
+        function disconnectTerminal() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            updateStatus(false);
+        }
+
+        // 清屏
+        function clearTerminal() {
+            if (term) {
+                term.clear();
+                term.write('$ ');
+            }
+        }
+
+        // 发送 Ctrl+C
+        function sendCtrlC() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'input', data: '\x03'}));
+            }
+        }
+
+        // 发送 Ctrl+D
+        function sendCtrlD() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'input', data: '\x04'}));
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTerminal();
+        });
+
+        // 页面卸载
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>

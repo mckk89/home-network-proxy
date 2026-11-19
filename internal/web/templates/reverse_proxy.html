@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - 反向代理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-size: 14px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group small { display: block; margin-top: 6px; color: #999; font-size: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .service-row { border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+        .service-row-header { padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .service-row-body { padding: 16px; }
+        .service-row-footer { padding: 12px 16px; background: #f8f9fa; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 8px; }
+        .service-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 13px; }
+        tr:hover td { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge.success { background: #e8f5e9; color: #4caf50; }
+        .badge.danger { background: #fdeaea; color: #e74c3c; }
+        .badge.warning { background: #fff3e0; color: #ff9800; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 18px; font-weight: 600; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">网络服务</div><a href="/ddns" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>动态域名 (DDNS)</a><a href="/reverse-proxy" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>反向代理</a><a href="/socket-proxy" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><path d="M12 6v6l4 2"/></svg>端口转发</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h1>反向代理</h1>
+                <button class="btn btn-primary" onclick="openModal()">+ 添加服务</button>
+            </header>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- 服务列表 -->
+            <div class="card">
+                <div class="card-header"><h3>📋 服务列表</h3></div>
+                <div class="card-body">
+                    <div id="servicesList">
+                        {{if .cfg.ReverseProxy.Services}}
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>域名</th>
+                                        <th>目标地址</th>
+                                        <th>SSL</th>
+                                        <th>WebSocket</th>
+                                        <th>路径前缀</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{range $i, $svc := .cfg.ReverseProxy.Services}}
+                                    <tr>
+                                        <td>{{$svc.name}}</td>
+                                        <td>{{$svc.domain}}</td>
+                                        <td>{{$svc.target_url}}</td>
+                                        <td><span class="badge {{if $svc.ssl_enabled}}success{{else}}danger{{end}}">{{if $svc.ssl_enabled}}启用{{else}}禁用{{end}}</span></td>
+                                        <td><span class="badge {{if $svc.websocket}}success{{else}}danger{{end}}">{{if $svc.websocket}}启用{{else}}禁用{{end}}</span></td>
+                                        <td>{{if $svc.path_prefix}}{{$svc.path_prefix}}{{else}}-{{end}}</td>
+                                        <td><span class="badge {{if $svc.enabled}}success{{else}}danger{{end}}">{{if $svc.enabled}}启用{{else}}禁用{{end}}</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-secondary" onclick="editService({{$i}})">编辑</button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteService({{$i}})">删除</button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                        {{else}}
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:12px;opacity:0.5;">
+                                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                            </svg>
+                            <p>暂无反向代理服务</p>
+                            <button class="btn btn-primary" style="margin-top:12px;" onclick="openModal()">添加第一个服务</button>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 全局设置 -->
+            <div class="card">
+                <div class="card-header"><h3>⚙️ 全局设置</h3></div>
+                <div class="card-body">
+                    <form id="globalForm">
+                        <div class="form-grid">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="enabled" id="proxy_enabled" {{if .cfg.ReverseProxy.Enabled}}checked{{end}}>
+                                <label for="proxy_enabled">启用反向代理</label>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存全局设置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加/编辑服务模态框 -->
+    <div class="modal" id="serviceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加反向代理服务</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="serviceForm">
+                <input type="hidden" name="index" id="serviceIndex">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>服务名称 *</label>
+                        <input type="text" name="name" id="svc_name" placeholder="例如: web, api, blog" required>
+                    </div>
+                    <div class="form-group">
+                        <label>域名 *</label>
+                        <input type="text" name="domain" id="svc_domain" placeholder="example.com 或 * 表示所有域名" required>
+                    </div>
+                    <div class="form-group">
+                        <label>目标地址 *</label>
+                        <input type="text" name="target_url" id="svc_target" placeholder="http://localhost:8080" required>
+                    </div>
+                    <div class="form-group">
+                        <label>路径前缀</label>
+                        <input type="text" name="path_prefix" id="svc_path" placeholder="/api (可选，留空匹配所有路径)">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" name="enabled" id="svc_enabled" checked>
+                        <label for="svc_enabled">启用</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" name="ssl_enabled" id="svc_ssl">
+                        <label for="svc_ssl">启用 SSL</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" name="websocket" id="svc_ws">
+                        <label for="svc_ws">WebSocket 支持</label>
+                    </div>
+                    <div class="form-group" id="sslFields" style="display:none;">
+                        <label>SSL 证书文件</label>
+                        <input type="text" name="cert_file" id="svc_cert" placeholder="/app/conf/cert.pem">
+                    </div>
+                    <div class="form-group" id="keyFields" style="display:none;">
+                        <label>SSL 私钥文件</label>
+                        <input type="text" name="key_file" id="svc_key" placeholder="/app/conf/key.pem">
+                    </div>
+                    <div class="form-group">
+                        <label>超时 (秒)</label>
+                        <input type="number" name="timeout" id="svc_timeout" value="30" min="5" max="300">
+                    </div>
+                    <div class="form-group">
+                        <label>重试次数</label>
+                        <input type="number" name="retry" id="svc_retry" value="3" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>自定义响应头 (JSON)</label>
+                        <textarea name="headers" id="svc_headers" rows="3" placeholder='{"X-Custom-Header": "value"}'></textarea>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        // 全局设置
+        document.getElementById('globalForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = {enabled: document.getElementById('proxy_enabled').checked};
+            try {
+                const res = await fetch('/api/reverse-proxy', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+                const result = await res.json();
+                showAlert(result.message || '保存成功', 'success');
+            } catch (err) { showAlert('保存失败: ' + err.message, 'error'); }
+        });
+
+        // SSL 字段显示/隐藏
+        document.getElementById('svc_ssl').addEventListener('change', function(e) {
+            document.getElementById('sslFields').style.display = e.target.checked ? 'block' : 'none';
+            document.getElementById('keyFields').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // 模态框
+        function openModal(index = -1) {
+            const modal = document.getElementById('serviceModal');
+            const form = document.getElementById('serviceForm');
+            form.reset();
+            document.getElementById('serviceIndex').value = index;
+            document.getElementById('svc_enabled').checked = true;
+            
+            if (index >= 0) {
+                document.getElementById('modalTitle').textContent = '编辑反向代理服务';
+                // 这里需要从服务端获取数据填充，简化处理
+            } else {
+                document.getElementById('modalTitle').textContent = '添加反向代理服务';
+            }
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('serviceModal').classList.remove('active');
+        }
+
+        // 服务表单提交
+        document.getElementById('serviceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.enabled = document.getElementById('svc_enabled').checked;
+            data.ssl_enabled = document.getElementById('svc_ssl').checked;
+            data.websocket = document.getElementById('svc_ws').checked;
+            data.timeout = parseInt(data.timeout) || 30;
+            data.retry = parseInt(data.retry) || 3;
+            try {
+                data.headers = JSON.parse(data.headers || '{}');
+            } catch { data.headers = {}; }
+
+            const index = parseInt(data.index);
+            delete data.index;
+
+            // 这里简化：实际需要根据 index 决定是新增还是更新
+            try {
+                const res = await fetch('/api/reverse-proxy', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+                const result = await res.json();
+                showAlert(result.message || '保存成功', 'success');
+                closeModal();
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) { showAlert('保存失败: ' + err.message, 'error'); }
+        });
+
+        function editService(index) {
+            openModal(index);
+        }
+
+        async function deleteService(index) {
+            if (!confirm('确定删除该服务吗？')) return;
+            showAlert('删除功能开发中', 'success');
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('serviceModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>

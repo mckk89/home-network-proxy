@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - FTP 服务</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-size: 14px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group small { display: block; margin-top: 6px; color: #999; font-size: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .info-box { background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: #1565c0; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">文件与存储</div><a href="/files" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>文件管理</a><a href="/ftp" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>FTP 服务</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header"><h1>FTP 服务</h1></header>
+
+            <div id="alert" class="alert"></div>
+
+            <div class="info-box">
+                <strong>📖 使用说明：</strong> FTP 服务支持主动/被动模式，建议配合反向代理使用。
+                <br>默认端口: 21 (控制), 20000-20100 (数据被动模式端口范围)
+            </div>
+
+            <!-- 基本设置 -->
+            <div class="card">
+                <div class="card-header"><h3>⚙️ 服务设置</h3></div>
+                <div class="card-body">
+                    <form id="ftpForm">
+                        <div class="form-grid">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="enabled" id="ftp_enabled">
+                                <label for="ftp_enabled">启用 FTP 服务</label>
+                            </div>
+                            <div class="form-group">
+                                <label>控制端口</label>
+                                <input type="number" name="port" id="ftp_port" value="21" min="1" max="65535">
+                            </div>
+                            <div class="form-group">
+                                <label>被动模式端口范围</label>
+                                <input type="text" name="pasv_range" id="ftp_pasv_range" value="20000-20100" placeholder="20000-20100">
+                            </div>
+                            <div class="form-group">
+                                <label>外部 IP (被动模式用)</label>
+                                <input type="text" name="external_ip" id="ftp_external_ip" placeholder="自动检测或手动指定公网 IP">
+                            </div>
+                            <div class="form-group">
+                                <label>根目录</label>
+                                <input type="text" name="root" id="ftp_root" value="{{.cfg.Storage.Path}}/ftp" placeholder="/app/conf/ftp">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="allow_anonymous" id="ftp_anon">
+                                <label for="ftp_anon">允许匿名访问</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="tls_enabled" id="ftp_tls">
+                                <label for="ftp_tls">启用 FTPS (TLS)</label>
+                            </div>
+                            <div class="form-group" id="tlsFields" style="display:none;">
+                                <label>证书文件</label>
+                                <input type="text" name="cert_file" id="ftp_cert" placeholder="/app/conf/cert.pem">
+                            </div>
+                            <div class="form-group" id="keyFields" style="display:none;">
+                                <label>私钥文件</label>
+                                <input type="text" name="key_file" id="ftp_key" placeholder="/app/conf/key.pem">
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                            <button type="button" class="btn btn-secondary" onclick="restartFTP()">重启服务</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 用户管理 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>👥 用户管理</h3>
+                    <button class="btn btn-primary" onclick="openUserModal()">添加用户</button>
+                </div>
+                <div class="card-body">
+                    <div class="info-box" style="margin-bottom:16px;">
+                        默认用户: <code>admin</code> / <code>666</code> (请在系统设置中修改主密码)
+                    </div>
+                    <p style="color:#666;">FTP 用户认证使用系统统一账号体系，请在 <a href="/settings" style="color:#667eea;">系统设置</a> 中管理用户。</p>
+                </div>
+            </div>
+
+            <!-- 客户端连接 -->
+            <div class="card">
+                <div class="card-header"><h3>🔗 客户端连接方式</h3></div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>FileZilla / WinSCP</label>
+                            <textarea readonly rows="4" style="font-family:monospace;font-size:12px;background:#f8f9fa;">协议: FTP / FTPS (显式 TLS)
+主机: your-ip
+端口: 21
+加密: 要求显式 FTP over TLS (FTPS)
+登录类型: 正常
+用户: 你的用户名
+密码: 你的密码</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Windows 资源管理器</label>
+                            <textarea readonly rows="4" style="font-family:monospace;font-size:12px;background:#f8f9fa;">1. 打开"此电脑"
+2. 地址栏输入: ftp://your-ip:21
+3. 右键空白处 → "添加网络位置"
+4. 输入用户名密码</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>命令行 (lftp)</label>
+                            <textarea readonly rows="4" style="font-family:monospace;font-size:12px;background:#f8f9fa;"># 普通 FTP
+lftp ftp://user:pass@your-ip:21
+
+# FTPS (显式 TLS)
+lftp -e "set ftp:ssl-force true; set ssl:verify-certificate no" ftp://user:pass@your-ip:21</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        document.getElementById('ftpForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.enabled = document.getElementById('ftp_enabled').checked;
+            data.allow_anonymous = document.getElementById('ftp_anon').checked;
+            data.tls_enabled = document.getElementById('ftp_tls').checked;
+            showAlert('FTP 设置保存功能开发中', 'success');
+        });
+
+        document.getElementById('ftp_tls').addEventListener('change', function(e) {
+            document.getElementById('tlsFields').style.display = e.target.checked ? 'block' : 'none';
+            document.getElementById('keyFields').style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        function restartFTP() { showAlert('重启服务功能开发中', 'success'); }
+        function openUserModal() { window.location.href = '/settings'; }
+    </script>
+</body>
+</html>

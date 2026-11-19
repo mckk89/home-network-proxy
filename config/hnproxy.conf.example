@@ -1,0 +1,102 @@
+# 家庭网络反代 配置文件示例
+# 复制为 hnproxy.conf 并根据需要修改
+# 完整配置参考: https://lucky666.cn/docs/intro
+
+web:
+  port: 16601
+  username: "admin"
+  password: "your_secure_password_here"
+  safe_url: "mysecret"
+  enable_https: false
+  cert_file: ""
+  key_file: ""
+  disable_2fa: false
+
+ddns:
+  enabled: true
+  providers:
+    "example.com": "alidns"
+    "sub.example.com": "cloudflare"
+  interval: 300
+  ipv4_enabled: true
+  ipv6_enabled: true
+
+reverse_proxy:
+  enabled: true
+  services:
+    - "web|example.com|http://localhost:8080|true|false|||false|30|3|"
+    - "api|api.example.com|http://localhost:3000|true|true|/app/conf/cert.pem|/app/conf/key.pem|true|30|3|/api"
+
+socket_proxy:
+  enabled: true
+  services:
+    - "ssh|tcp|0.0.0.0:2222|192.168.1.100:22|true"
+    - "rdp|tcp|0.0.0.0:3389|192.168.1.101:3389|true"
+
+modules:
+  enabled: ["ddns", "reverse_proxy", "socket_proxy", "ssl", "tasks", "auth", "logs", "webui"]
+  disabled: []
+
+storage:
+  path: "/app/conf"
+
+security:
+  ip_whitelist: ["192.168.1.0/24", "10.0.0.0/8"]
+  ip_blacklist: []
+  enable_waf: true
+  waf_mode: "prevention"
+
+# ==================== 服务商认证配置 ====================
+# 以下敏感信息建议通过 Web 界面配置，不写在配置文件中
+# alidns_access_key: "LTAI..."
+# alidns_secret: "your_secret"
+# dnspod_token: "12345,abcdef..."
+# cloudflare_token: "your_api_token"
+# cloudflare_zone: "your_zone_id"
+# callback_url: "https://api.example.com/update?domain={domain}&ip={ip}"
+
+# ==================== ACME 证书配置 ====================
+# acme_server: "letsencrypt"
+# acme_email: "admin@example.com"
+# cert_path: "/app/conf/certs"
+# auto_renew: true
+# renew_before: 30
+
+# ==================== DNS 验证配置 (用于通配符证书) ====================
+# dns_provider: "alidns"
+# dns_key: "AccessKey ID"
+# dns_secret: "AccessKey Secret"
+
+# ==================== 计划任务配置 ====================
+# tasks:
+#   - name: "每日备份"
+#     type: "cron"
+#     cron: "0 2 * * *"
+#     command: "backup"
+#     enabled: true
+#   - name: "证书检查"
+#     type: "interval"
+#     interval: "12h"
+#     command: "cert_renew"
+#     enabled: true
+
+# ==================== WebDAV 配置 ====================
+# webdav:
+#   enabled: true
+#   port: 16602
+#   root: "/app/conf/webdav"
+#   readonly: false
+#   allow_upload: true
+#   allow_delete: true
+
+# ==================== FTP 配置 ====================
+# ftp:
+#   enabled: false
+#   port: 21
+#   pasv_range: "20000-20100"
+#   external_ip: ""
+#   root: "/app/conf/ftp"
+#   allow_anonymous: false
+#   tls_enabled: false
+#   cert_file: ""
+#   key_file: ""

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - WebDAV 服务</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-size: 14px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group small { display: block; margin-top: 6px; color: #999; font-size: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 13px; }
+        tr:hover td { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge.success { background: #e8f5e9; color: #4caf50; }
+        .badge.danger { background: #fdeaea; color: #e74c3c; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        .info-box { background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; padding: 16px; margin-bottom: 20px; color: #1565c0; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">文件与存储</div><a href="/files" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>文件管理</a><a href="/webdav" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>WebDAV 服务</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header"><h1>WebDAV 服务</h1></header>
+
+            <div id="alert" class="alert"></div>
+
+            <div class="info-box">
+                <strong>📖 使用说明：</strong> WebDAV 允许通过 HTTP 协议进行文件管理，支持 Windows/Mac/Linux 原生挂载。
+                <br>地址格式: <code>http://IP:16601/webdav/</code> (需在反向代理中配置路径 /webdav)
+            </div>
+
+            <!-- 基本设置 -->
+            <div class="card">
+                <div class="card-header"><h3>⚙️ 服务设置</h3></div>
+                <div class="card-body">
+                    <form id="webdavForm">
+                        <div class="form-grid">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="enabled" id="webdav_enabled" checked>
+                                <label for="webdav_enabled">启用 WebDAV 服务</label>
+                            </div>
+                            <div class="form-group">
+                                <label>监听端口</label>
+                                <input type="number" name="port" id="webdav_port" value="16602" min="1" max="65535">
+                                <small>默认 16602，需防火墙放行</small>
+                            </div>
+                            <div class="form-group">
+                                <label>根目录</label>
+                                <input type="text" name="root" id="webdav_root" value="{{.cfg.Storage.Path}}/webdav" placeholder="/app/conf/webdav">
+                                <small>WebDAV 访问的根目录</small>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="readonly" id="webdav_readonly">
+                                <label for="webdav_readonly">只读模式</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="allow_upload" id="webdav_upload" checked>
+                                <label for="webdav_upload">允许上传</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="allow_delete" id="webdav_delete" checked>
+                                <label for="webdav_delete">允许删除</label>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                            <button type="button" class="btn btn-secondary" onclick="restartWebDAV()">重启服务</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 用户管理 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>👥 用户管理</h3>
+                    <button class="btn btn-primary" onclick="openUserModal()">添加用户</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>权限</th>
+                                    <th>根目录</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersBody">
+                                <tr>
+                                    <td>admin</td>
+                                    <td>读写删除</td>
+                                    <td>/app/conf/webdav</td>
+                                    <td><span class="badge success">启用</span></td>
+                                    <td><button class="btn btn-sm btn-secondary" onclick="editUser('admin')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deleteUser('admin')">删除</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 客户端连接说明 -->
+            <div class="card">
+                <div class="card-header"><h3>🔗 客户端连接方式</h3></div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Windows (资源管理器)</label>
+                            <textarea readonly rows="3" style="font-family:monospace;font-size:12px;background:#f8f9fa;">1. 打开"此电脑" → "映射网络驱动器"
+2. 文件夹: http://your-ip:16601/webdav/
+3. 勾选"使用其他凭据连接"
+4. 输入用户名密码</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Mac (访达)</label>
+                            <textarea readonly rows="3" style="font-family:monospace;font-size:12px;background:#f8f9fa;">1. 访达 → 前往 → 连接服务器
+2. 服务器地址: http://your-ip:16601/webdav/
+3. 点击"连接"，输入用户名密码</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Linux (davfs2)</label>
+                            <textarea readonly rows="3" style="font-family:monospace;font-size:12px;background:#f8f9fa;"># 安装: apt install davfs2
+# 挂载: mount -t davfs http://your-ip:16601/webdav/ /mnt/webdav
+# 配置 /etc/davfs2/secrets 添加凭据</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>RaiDrive / Mountain Duck (第三方客户端)</label>
+                            <textarea readonly rows="3" style="font-family:monospace;font-size:12px;background:#f8f9fa;">协议: WebDAV (HTTP)
+服务器: your-ip
+端口: 16601
+路径: /webdav/
+用户名/密码: 按用户管理配置</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加/编辑用户模态框 -->
+            <div class="modal" id="userModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+                <div class="modal-content" style="background:white;border-radius:12px;padding:24px;width:90%;max-width:500px;">
+                    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3 id="userModalTitle">添加用户</h3>
+                        <button class="modal-close" onclick="closeUserModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+                    </div>
+                    <form id="userForm">
+                        <input type="hidden" name="old_username" id="old_username">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>用户名 *</label>
+                                <input type="text" name="username" id="user_username" required>
+                            </div>
+                            <div class="form-group">
+                                <label>密码 *</label>
+                                <input type="password" name="password" id="user_password" placeholder="留空不修改">
+                            </div>
+                            <div class="form-group">
+                                <label>权限</label>
+                                <select name="perm" id="user_perm">
+                                    <option value="rw">读写</option>
+                                    <option value="r">只读</option>
+                                    <option value="rwd">读写删除</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>根目录</label>
+                                <input type="text" name="root" id="user_root" value="{{.cfg.Storage.Path}}/webdav">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="enabled" id="user_enabled" checked>
+                                <label for="user_enabled">启用</label>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeUserModal()">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        document.getElementById('webdavForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.enabled = document.getElementById('webdav_enabled').checked;
+            data.readonly = document.getElementById('webdav_readonly').checked;
+            data.allow_upload = document.getElementById('webdav_upload').checked;
+            data.allow_delete = document.getElementById('webdav_delete').checked;
+            showAlert('WebDAV 设置保存功能开发中', 'success');
+        });
+
+        function openUserModal(username = null) {
+            const modal = document.getElementById('userModal');
+            const form = document.getElementById('userForm');
+            form.reset();
+            document.getElementById('user_enabled').checked = true;
+            
+            if (username) {
+                document.getElementById('userModalTitle').textContent = '编辑用户';
+                document.getElementById('old_username').value = username;
+                document.getElementById('user_username').value = username;
+                document.getElementById('user_password').placeholder = '留空不修改密码';
+            } else {
+                document.getElementById('userModalTitle').textContent = '添加用户';
+                document.getElementById('old_username').value = '';
+            }
+            modal.style.display = 'flex';
+        }
+        function closeUserModal() { document.getElementById('userModal').style.display = 'none'; }
+
+        document.getElementById('userForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            showAlert('用户保存功能开发中', 'success');
+            closeUserModal();
+        });
+
+        function editUser(username) { openUserModal(username); }
+        function deleteUser(username) { if(confirm('确定删除用户 ' + username + '?')) showAlert('删除功能开发中', 'success'); }
+        function restartWebDAV() { showAlert('重启服务功能开发中', 'success'); }
+
+        document.getElementById('userModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeUserModal(); });
+    </script>
+</body>
+</html>

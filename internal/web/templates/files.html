@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - 文件管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .breadcrumb { padding: 12px 16px; background: white; border-radius: 8px; border: 1px solid #e9ecef; margin-bottom: 16px; font-size: 14px; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; margin: 0 8px; }
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+        .file-card { background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; transition: box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
+        .file-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #667eea; }
+        .file-icon { font-size: 48px; text-align: center; margin-bottom: 12px; }
+        .file-name { font-size: 13px; text-align: center; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-meta { font-size: 11px; color: #999; text-align: center; margin-top: 4px; }
+        .file-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
+        .upload-area { border: 2px dashed #ddd; border-radius: 8px; padding: 40px; text-align: center; margin-bottom: 24px; transition: border-color 0.2s; }
+        .upload-area.dragover { border-color: #667eea; background: #f0f2ff; }
+        .upload-area input { display: none; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; grid-column: 1/-1; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">文件与存储</div><a href="/files" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>文件管理</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h1>文件管理</h1>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" multiple>
+                    <p>拖拽文件到这里或 <label for="fileInput" style="color:#667eea;cursor:pointer;">点击上传</label></p>
+                    <small style="color:#999;">支持多文件上传</small>
+                </div>
+            </header>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- 面包屑导航 -->
+            <nav class="breadcrumb" id="breadcrumb">
+                <a href="#" data-path="/">根目录</a>
+            </nav>
+
+            <!-- 文件列表 -->
+            <div class="file-grid" id="fileGrid">
+                <div class="empty-state">加载中...</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentPath = '/';
+        const configPath = '{{.cfg.Storage.Path}}';
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        // 格式化文件大小
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+            if (bytes < 1024*1024*1024) return (bytes/1024/1024).toFixed(1) + ' MB';
+            return (bytes/1024/1024/1024).toFixed(1) + ' GB';
+        }
+
+        // 获取文件图标
+        function getFileIcon(name, isDir) {
+            if (isDir) return '📁';
+            const ext = name.split('.').pop().toLowerCase();
+            const icons = {
+                'txt': '📄', 'md': '📝', 'json': '📋', 'yaml': '📋', 'yml': '📋',
+                'conf': '⚙️', 'config': '⚙️', 'ini': '⚙️',
+                'sh': '💻', 'bash': '💻', 'py': '🐍', 'js': '📜', 'ts': '📜',
+                'html': '🌐', 'css': '🎨', 'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'webp': '🖼️',
+                'zip': '📦', 'tar': '📦', 'gz': '📦', 'rar': '📦', '7z': '📦',
+                'log': '📋', 'pdf': '📕',
+            };
+            return icons[ext] || '📄';
+        }
+
+        // 加载文件列表
+        async function loadFiles(path = '/') {
+            currentPath = path;
+            updateBreadcrumb();
+            
+            const grid = document.getElementById('fileGrid');
+            grid.innerHTML = '<div class="empty-state">加载中...</div>';
+            
+            try {
+                const res = await fetch('/api/files' + encodeURI(path));
+                const files = await res.json();
+                renderFiles(files);
+            } catch (err) {
+                showAlert('加载失败: ' + err.message, 'error');
+                grid.innerHTML = '<div class="empty-state">加载失败</div>';
+            }
+        }
+
+        function updateBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            const parts = currentPath.split('/').filter(p => p);
+            let html = '<a href="#" data-path="/">根目录</a>';
+            let accumulated = '';
+            parts.forEach(part => {
+                accumulated += '/' + part;
+                html += '<span>/</span><a href="#" data-path="' + accumulated + '">' + part + '</a>';
+            });
+            breadcrumb.innerHTML = html;
+            
+            breadcrumb.querySelectorAll('a').forEach(a => {
+                a.addEventListener('click', e => {
+                    e.preventDefault();
+                    loadFiles(a.dataset.path);
+                });
+            });
+        }
+
+        function renderFiles(files) {
+            const grid = document.getElementById('fileGrid');
+            if (!files || files.length === 0) {
+                grid.innerHTML = '<div class="empty-state"><p>目录为空</p></div>';
+                return;
+            }
+            
+            // 先显示目录，再显示文件
+            files.sort((a, b) => {
+                if (a.isDir && !b.isDir) return -1;
+                if (!a.isDir && b.isDir) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            grid.innerHTML = files.map(f => `
+                <div class="file-card" ondblclick="${f.isDir ? 'loadFiles(\"' + f.path + '\")' : ''}">
+                    <div class="file-icon">${getFileIcon(f.name, f.isDir)}</div>
+                    <div class="file-name" title="${f.name}">${f.name}</div>
+                    <div class="file-meta">
+                        ${f.isDir ? '目录' : formatSize(f.size)} | ${f.modTime}
+                    </div>
+                    <div class="file-actions">
+                        ${!f.isDir ? '<button class="btn btn-sm btn-primary" onclick="downloadFile(\'' + f.path + '\')">下载</button>' : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteFile('${f.path}', '${f.name}')">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 上传文件
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', e => { uploadArea.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', e => handleFiles(e.target.files));
+        
+        async function handleFiles(files) {
+            if (!files.length) return;
+            
+            const formData = new FormData();
+            for (let f of files) formData.append('files', f);
+            formData.append('path', currentPath);
+            
+            try {
+                const res = await fetch('/api/files/upload', {method: 'POST', body: formData});
+                const data = await res.json();
+                showAlert('上传成功: ' + data.uploaded + ' 个文件', 'success');
+                loadFiles(currentPath);
+            } catch (err) {
+                showAlert('上传失败: ' + err.message, 'error');
+            }
+            fileInput.value = '';
+        }
+
+        // 下载文件
+        function downloadFile(path) {
+            window.open('/api/download?path=' + encodeURIComponent(path), '_blank');
+        }
+
+        // 删除文件
+        async function deleteFile(path, name) {
+            if (!confirm('确定删除 "' + name + '" 吗？')) return;
+            try {
+                const res = await fetch('/api/files' + encodeURI(path), {method: 'DELETE'});
+                const data = await res.json();
+                showAlert('删除成功', 'success');
+                loadFiles(currentPath);
+            } catch (err) {
+                showAlert('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => loadFiles('/'));
+    </script>
+</body>
+</html>

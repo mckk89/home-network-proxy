@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - 模块管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .module-card { border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; transition: box-shadow 0.2s, border-color 0.2s; }
+        .module-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #667eea; }
+        .module-card.enabled { border-left: 4px solid #4caf50; }
+        .module-card.disabled { border-left: 4px solid #e74c3c; opacity: 0.7; }
+        .module-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .module-name { font-size: 16px; font-weight: 600; color: #333; }
+        .module-desc { color: #666; font-size: 13px; margin-top: 4px; }
+        .toggle-switch { position: relative; width: 52px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ddd; border-radius: 28px; transition: 0.3s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background: #667eea; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .module-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+        .tag.core { background: #e3f2fd; color: #2196f3; }
+        .tag.storage { background: #e8f5e9; color: #4caf50; }
+        .tag.network { background: #fff3e0; color: #ff9800; }
+        .tag.security { background: #fce4ec; color: #e91e63; }
+        .tag.media { background: #f3e5f5; color: #9c27b0; }
+        .tag.docker { background: #e0f2f1; color: #009688; }
+        .module-status { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 12px; color: #999; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+        .badge.running { background: #e8f5e9; color: #4caf50; }
+        .badge.stopped { background: #fdeaea; color: #e74c3c; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">网络服务</div><a href="/ddns" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>动态域名 (DDNS)</a><a href="/reverse-proxy" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>反向代理</a><a href="/socket-proxy" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><path d="M12 6v6l4 2"/></svg>端口转发</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a><a href="/modules" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>模块管理</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header"><h1>模块管理</h1></header>
+
+            <div id="alert" class="alert" style="display:none;padding:16px;border-radius:8px;margin-bottom:20px;"></div>
+
+            <div class="card">
+                <div class="card-header"><h3>🧩 可用模块</h3></div>
+                <div class="card-body">
+                    <div class="module-grid" id="modulesGrid">
+                        <!-- 模块卡片由 JS 渲染 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+            alert.style.display = 'block';
+        }
+
+        // 模块分类标签
+        const moduleCategories = {
+            'ddns': 'core', 'reverse_proxy': 'core', 'socket_proxy': 'core',
+            'ssl': 'core', 'tasks': 'core', 'auth': 'core', 'logs': 'core',
+            'ipdb': 'core', 'icons': 'core', 'webui': 'core',
+            'storage': 'storage', 'ftp': 'storage', 'webdav': 'storage',
+            'wol': 'network', 'terminal': 'network', 'passkey': 'security',
+            'homeid': 'security', 'waf': 'security', 'grpc_proxy': 'security',
+            'dlna': 'media', 'cloudflare_tunnel': 'network', 'frp': 'network',
+            'smb': 'storage', 'filebrowser': 'storage', 'rclone': 'storage',
+            'docker': 'docker'
+        };
+
+        const categoryLabels = {
+            'core': '核心', 'storage': '存储', 'network': '网络',
+            'security': '安全', 'media': '媒体', 'docker': 'Docker'
+        };
+
+        // 加载模块列表
+        async function loadModules() {
+            try {
+                const res = await fetch('/api/modules');
+                const modules = await res.json();
+                renderModules(modules);
+            } catch (err) {
+                showAlert('加载模块失败: ' + err.message, 'error');
+            }
+        }
+
+        function renderModules(modules) {
+            const container = document.getElementById('modulesGrid');
+            container.innerHTML = '';
+
+            modules.forEach(module => {
+                const category = moduleCategories[module.name] || 'core';
+                const card = document.createElement('div');
+                card.className = `module-card ${module.enabled ? 'enabled' : 'disabled'}`;
+                card.innerHTML = `
+                    <div class="module-header">
+                        <div>
+                            <div class="module-name">${module.description} (${module.name})</div>
+                            <div class="module-desc">${module.name}</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${module.enabled ? 'checked' : ''} onchange="toggleModule('${module.name}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="module-tags">
+                        <span class="tag ${category}">${categoryLabels[category]}</span>
+                    </div>
+                    <div class="module-status">
+                        <span>状态: <span class="badge ${module.enabled ? 'running' : 'stopped'}">${module.enabled ? '运行中' : '已停止'}</span></span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function toggleModule(name, enabled) {
+            try {
+                const res = await fetch(`/api/modules/${name}/toggle`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled})
+                });
+                const result = await res.json();
+                if (result.error) {
+                    showAlert(result.error, 'error');
+                    loadModules(); // 重新加载恢复状态
+                } else {
+                    showAlert(`模块 ${name} ${enabled ? '已启用' : '已禁用'}`, 'success');
+                }
+            } catch (err) {
+                showAlert('操作失败: ' + err.message, 'error');
+                loadModules();
+            }
+        }
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', loadModules);
+    </script>
+</body>
+</html>

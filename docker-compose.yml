@@ -1,0 +1,163 @@
+# 标准 Docker Compose 配置
+# 支持多种部署模式：host 网络模式（推荐 Linux）、bridge 模式
+# 版本对应：full_docker, standard_docker, lite_waf, full, medium, standard, lite
+
+version: '3.8'
+
+services:
+  # ==================== 完整 Docker 版 (完整功能 + Docker 管理) ====================
+  hnproxy-full-docker:
+    image: gdy666/home-network-proxy:v3
+    container_name: hnproxy-full-docker
+    # 推荐使用 host 网络模式（Linux），支持 IPv4/IPv6
+    network_mode: host
+    # Windows/macOS 或必须使用 bridge 模式时取消下面注释并注释掉 network_mode: host
+    # ports:
+    #   - "16601:16601"  # Web 管理界面
+    #   - "80:80"        # HTTP 反向代理
+    #   - "443:443"      # HTTPS 反向代理
+    volumes:
+      - ./data/full-docker:/app/conf           # 配置持久化
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker 管理需要
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=full-docker"
+      - "com.hnproxy.description=完整 Docker 版 - 完整功能包含 Docker 管理"
+
+  # ==================== 标准 Docker 版 (含 Docker 管理) ====================
+  hnproxy-docker:
+    image: gdy666/home-network-proxy:v3_standard_docker
+    container_name: hnproxy-docker
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/standard-docker:/app/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=hnproxy-docker"
+      - "com.hnproxy.description=标准 Docker 版 - 含 Docker 管理"
+
+  # ==================== 轻量 WAF 版 (含 WAF + gRPC) ====================
+  hnproxy-lite-waf:
+    image: gdy666/home-network-proxy:v3_lite_waf
+    container_name: hnproxy-lite-waf
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/lite-waf:/app/conf
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=lite-waf"
+      - "com.hnproxy.description=轻量 WAF 版 - 含 Coraza WAF 和 gRPC 反向代理"
+
+  # ==================== 完整版 (完整功能，无 Docker 管理) ====================
+  hnproxy-full:
+    image: gdy666/home-network-proxy:v3_full
+    container_name: hnproxy-full
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/full:/app/conf
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=full"
+      - "com.hnproxy.description=完整版 - 完整功能，无 Docker 管理"
+
+  # ==================== 增强版 (中等功能集) ====================
+  hnproxy-medium:
+    image: gdy666/home-network-proxy:v3_medium
+    container_name: hnproxy-medium
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/medium:/app/conf
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=medium"
+      - "com.hnproxy.description=增强版 - 中等功能集"
+
+  # ==================== 标准版 (基础功能集) ====================
+  hnproxy-standard:
+    image: gdy666/home-network-proxy:v3_standard
+    container_name: hnproxy-standard
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/standard:/app/conf
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=standard"
+      - "com.hnproxy.description=标准版 - 基础功能集"
+
+  # ==================== 轻量版 (最精简) ====================
+  hnproxy-lite:
+    image: gdy666/home-network-proxy:v3_lite
+    container_name: hnproxy-lite
+    network_mode: host
+    # ports:
+    #   - "16601:16601"
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - ./data/lite:/app/conf
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "com.hnproxy.version=3.5.0"
+      - "com.hnproxy.edition=lite"
+      - "com.hnproxy.description=轻量版 - 最精简功能集"
+
+# ==================== 网络配置 ====================
+# 使用 host 模式时不需要定义 networks
+# 如果必须使用 bridge 模式，取消下面注释：
+# networks:
+#   hnproxy-net:
+#     driver: bridge
+
+# ==================== 使用说明 ====================
+# 1. 选择需要的版本，取消对应服务的注释
+# 2. 创建数据目录：mkdir -p data/{full-docker,standard-docker,lite-waf,full,medium,standard,lite}
+# 3. 启动：docker compose up -d hnproxy-full-docker  (替换为你选择的服务名)
+# 4. 访问：http://<宿主机IP>:16601  默认账号/密码：666/666
+# 5. 修改配置后重启：docker compose restart hnproxy-full-docker
+#
+# 重要提示：
+# - Linux 环境强烈推荐使用 network_mode: host，支持 IPv6 且性能最佳
+# - Windows/macOS 不支持 host 模式，必须使用 ports 映射（bridge 模式）
+# - Docker 管理功能需要挂载 /var/run/docker.sock（仅 full-docker 和 hnproxy-docker 支持）
+# - 配置文件在容器内 /app/conf 目录，对应宿主机 ./data/<版本> 目录

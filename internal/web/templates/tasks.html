@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - 计划任务</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-size: 14px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group small { display: block; margin-top: 6px; color: #999; font-size: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 13px; }
+        tr:hover td { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge.success { background: #e8f5e9; color: #4caf50; }
+        .badge.warning { background: #fff3e0; color: #ff9800; }
+        .badge.danger { background: #fdeaea; color: #e74c3c; }
+        .badge.info { background: #e3f2fd; color: #2196f3; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 18px; font-weight: 600; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">工具与自动化</div><a href="/tasks" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>计划任务</a><a href="/docker" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>Docker 管理</a><a href="/terminal" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>Web 终端</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <h1>计划任务</h1>
+                <button class="btn btn-primary" onclick="openTaskModal()">+ 添加任务</button>
+            </header>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- 任务列表 -->
+            <div class="card">
+                <div class="card-header"><h3>📋 任务列表</h3></div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="tasksTable">
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>类型</th>
+                                    <th>表达式/时间</th>
+                                    <th>命令</th>
+                                    <th>状态</th>
+                                    <th>上次运行</th>
+                                    <th>下次运行</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasksBody">
+                                <tr><td colspan="8" class="empty-state">暂无计划任务</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加/编辑任务模态框 -->
+            <div class="modal" id="taskModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="taskModalTitle">添加计划任务</h3>
+                        <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+                    </div>
+                    <form id="taskForm">
+                        <input type="hidden" name="id" id="task_id">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>任务名称 *</label>
+                                <input type="text" name="name" id="task_name" placeholder="例如: 每日备份, 证书检查" required>
+                            </div>
+                            <div class="form-group">
+                                <label>任务类型 *</label>
+                                <select name="type" id="task_type" required onchange="toggleScheduleFields()">
+                                    <option value="cron">Cron 表达式</option>
+                                    <option value="interval">固定间隔</option>
+                                    <option value="once">单次执行</option>
+                                    <option value="reboot">开机启动</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="cronGroup">
+                                <label>Cron 表达式 *</label>
+                                <input type="text" name="cron" id="task_cron" placeholder="0 2 * * * (每天凌晨 2 点)">
+                                <small>格式: 分 时 日 月 周 | 例: 0 2 * * * = 每天 02:00</small>
+                            </div>
+                            <div class="form-group" id="intervalGroup" style="display:none;">
+                                <label>间隔 *</label>
+                                <input type="text" name="interval" id="task_interval" placeholder="1h30m, 30m, 1h (Go duration 格式)">
+                            </div>
+                            <div class="form-group" id="onceGroup" style="display:none;">
+                                <label>执行时间 *</label>
+                                <input type="datetime-local" name="once_time" id="task_once_time">
+                            </div>
+                            <div class="form-group">
+                                <label>执行命令 *</label>
+                                <textarea name="command" id="task_command" rows="3" placeholder="命令或脚本内容，支持: shell 命令, 内置动作" required></textarea>
+                                <small>示例: /usr/local/bin/hnproxy -c /etc/hnproxy/hnproxy.conf -backup<br>内置动作: backup, restart, ddns_update, cert_renew</small>
+                            </div>
+                            <div class="form-group">
+                                <label>工作目录</label>
+                                <input type="text" name="workdir" id="task_workdir" placeholder="/root (默认)">
+                            </div>
+                            <div class="form-group">
+                                <label>环境变量 (JSON)</label>
+                                <textarea name="env" id="task_env" rows="2" placeholder='{"PATH": "/usr/local/bin:/usr/bin"}'></textarea>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="enabled" id="task_enabled" checked>
+                                <label for="task_enabled">启用</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="run_on_start" id="task_run_on_start">
+                                <label for="task_run_on_start">启动时立即运行一次</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="capture_output" id="task_capture" checked>
+                                <label for="task_capture">捕获输出到日志</label>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存任务</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        // 任务类型切换
+        function toggleScheduleFields() {
+            const type = document.getElementById('task_type').value;
+            document.getElementById('cronGroup').style.display = type === 'cron' ? 'block' : 'none';
+            document.getElementById('intervalGroup').style.display = type === 'interval' ? 'block' : 'none';
+            document.getElementById('onceGroup').style.display = type === 'once' ? 'block' : 'none';
+        }
+
+        // 任务模态框
+        function openTaskModal(id = null) {
+            const modal = document.getElementById('taskModal');
+            const form = document.getElementById('taskForm');
+            form.reset();
+            document.getElementById('task_enabled').checked = true;
+            document.getElementById('task_capture').checked = true;
+            toggleScheduleFields();
+            
+            if (id) {
+                document.getElementById('taskModalTitle').textContent = '编辑任务';
+                document.getElementById('task_id').value = id;
+            } else {
+                document.getElementById('taskModalTitle').textContent = '添加计划任务';
+                document.getElementById('task_id').value = '';
+            }
+            modal.classList.add('active');
+        }
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.enabled = document.getElementById('task_enabled').checked;
+            data.run_on_start = document.getElementById('task_run_on_start').checked;
+            data.capture_output = document.getElementById('task_capture').checked;
+            try {
+                data.env = JSON.parse(data.env || '{}');
+            } catch { data.env = {}; }
+            
+            showAlert('任务保存功能开发中', 'success');
+            closeTaskModal();
+        });
+
+        // 加载任务列表 (模拟)
+        function loadTasks() {
+            const tbody = document.getElementById('tasksBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td>每日备份配置</td>
+                    <td>Cron</td>
+                    <td>0 2 * * *</td>
+                    <td>backup</td>
+                    <td><span class="badge success">启用</span></td>
+                    <td>2024-01-15 02:00:00</td>
+                    <td>2024-01-16 02:00:00</td>
+                    <td><button class="btn btn-sm btn-secondary" onclick="openTaskModal(1)">编辑</button> <button class="btn btn-sm btn-danger" onclick="deleteTask(1)">删除</button></td>
+                </tr>
+                <tr>
+                    <td>证书自动续期检查</td>
+                    <td>Interval</td>
+                    <td>每 12 小时</td>
+                    <td>cert_renew</td>
+                    <td><span class="badge success">启用</span></td>
+                    <td>2024-01-15 14:00:00</td>
+                    <td>2024-01-16 02:00:00</td>
+                    <td><button class="btn btn-sm btn-secondary" onclick="openTaskModal(2)">编辑</button> <button class="btn btn-sm btn-danger" onclick="deleteTask(2)">删除</button></td>
+                </tr>
+            `;
+        }
+
+        function deleteTask(id) {
+            if (!confirm('确定删除该任务吗？')) return;
+            showAlert('删除功能开发中', 'success');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadTasks);
+        document.getElementById('taskModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeTaskModal(); });
+    </script>
+</body>
+</html>

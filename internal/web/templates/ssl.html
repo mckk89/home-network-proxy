@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - SSL 证书管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-size: 14px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-group small { display: block; margin-top: 6px; color: #999; font-size: 12px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #667eea; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-success:hover { background: #43a047; }
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 13px; }
+        tr:hover td { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge.success { background: #e8f5e9; color: #4caf50; }
+        .badge.warning { background: #fff3e0; color: #ff9800; }
+        .badge.danger { background: #fdeaea; color: #e74c3c; }
+        .badge.info { background: #e3f2fd; color: #2196f3; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">证书与安全</div><a href="/ssl" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 12h12M8 12v4"/></svg>SSL 证书</a><a href="/waf" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>WAF 防火墙</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header"><h1>SSL 证书管理</h1></header>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- ACME 设置 -->
+            <div class="card">
+                <div class="card-header"><h3>⚙️ ACME 设置</h3></div>
+                <div class="card-body">
+                    <form id="acmeForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>ACME 服务器</label>
+                                <select name="acme_server" id="acme_server">
+                                    <option value="letsencrypt">Let's Encrypt (生产)</option>
+                                    <option value="letsencrypt_staging">Let's Encrypt (测试)</option>
+                                    <option value="zerossl">ZeroSSL</option>
+                                    <option value="buypass">Buypass</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="customServerGroup" style="display:none;">
+                                <label>自定义 ACME 目录 URL</label>
+                                <input type="text" name="custom_acme_url" id="custom_acme_url" placeholder="https://acme.example.com/directory">
+                            </div>
+                            <div class="form-group">
+                                <label>邮箱 (用于注册和过期通知)</label>
+                                <input type="email" name="email" id="acme_email" placeholder="admin@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label>默认证书存储路径</label>
+                                <input type="text" name="cert_path" id="cert_path" value="{{.cfg.Storage.Path}}/certs" placeholder="/app/conf/certs">
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="auto_renew" id="auto_renew" checked>
+                                <label for="auto_renew">自动续期</label>
+                            </div>
+                            <div class="form-group">
+                                <label>续期提前天数</label>
+                                <input type="number" name="renew_before" id="renew_before" value="30" min="1" max="90">
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary">保存 ACME 设置</button>
+                            <button type="button" class="btn btn-secondary" onclick="testACME()">测试连接</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- DNS 验证配置 -->
+            <div class="card">
+                <div class="card-header"><h3>🌐 DNS 验证配置 (用于通配符证书)</h3></div>
+                <div class="card-body">
+                    <p style="color:#666;margin-bottom:20px;">配置 DNS API 以支持通配符证书申请。留空表示不使用 DNS 验证。</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>DNS 服务商</label>
+                            <select name="dns_provider" id="dns_provider">
+                                <option value="">不使用 DNS 验证</option>
+                                <option value="alidns">阿里云 DNS</option>
+                                <option value="dnspod">DNSPod</option>
+                                <option value="cloudflare">Cloudflare</option>
+                                <option value="huaweicloud">华为云 DNS</option>
+                                <option value="tencentcloud">腾讯云 DNS</option>
+                                <option value="godaddy">GoDaddy</option>
+                                <option value="namecheap">Namecheap</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="dnsKeyGroup" style="display:none;">
+                            <label>AccessKey ID / API Token</label>
+                            <input type="text" name="dns_key" id="dns_key" placeholder="AccessKey ID 或 API Token">
+                        </div>
+                        <div class="form-group" id="dnsSecretGroup" style="display:none;">
+                            <label>AccessKey Secret</label>
+                            <input type="password" name="dns_secret" id="dns_secret" placeholder="AccessKey Secret (如需要)">
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary" onclick="saveDNSConfig()">保存 DNS 配置</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 证书列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📜 证书列表</h3>
+                    <button class="btn btn-primary" onclick="requestCertificate()">申请新证书</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="certTable">
+                            <thead>
+                                <tr>
+                                    <th>域名</th>
+                                    <th>类型</th>
+                                    <th>签发者</th>
+                                    <th>有效期至</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="certBody">
+                                <tr><td colspan="6" class="empty-state">暂无证书</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 申请证书模态框 -->
+            <div class="modal" id="certModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+                <div class="modal-content" style="background:white;border-radius:12px;padding:24px;width:90%;max-width:600px;max-height:90vh;overflow-y:auto;">
+                    <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3 id="certModalTitle">申请新证书</h3>
+                        <button class="modal-close" onclick="closeCertModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999;">&times;</button>
+                    </div>
+                    <form id="certForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>域名 *</label>
+                                <input type="text" name="domains" id="cert_domains" placeholder="example.com, *.example.com (多个用逗号分隔)" required>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="wildcard" id="cert_wildcard">
+                                <label for="cert_wildcard">包含通配符 (需要 DNS 验证)</label>
+                            </div>
+                            <div class="form-group">
+                                <label>验证方式</label>
+                                <select name="challenge" id="cert_challenge">
+                                    <option value="http">HTTP-01 (需开放 80 端口)</option>
+                                    <option value="dns">DNS-01 (需配置 DNS API，支持通配符)</option>
+                                    <option value="tls">TLS-ALPN-01 (需开放 443 端口)</option>
+                                </select>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" name="force" id="cert_force">
+                                <label for="cert_force">强制重新申请 (忽略缓存)</label>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-success">申请证书</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeCertModal()">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        // ACME 服务器选择
+        document.getElementById('acme_server').addEventListener('change', function(e) {
+            document.getElementById('customServerGroup').style.display = e.target.value === 'custom' ? 'block' : 'none';
+        });
+
+        // DNS 服务商选择
+        document.getElementById('dns_provider').addEventListener('change', function(e) {
+            const show = e.target.value !== '';
+            document.getElementById('dnsKeyGroup').style.display = show ? 'block' : 'none';
+            document.getElementById('dnsSecretGroup').style.display = show ? 'block' : 'none';
+        });
+
+        // ACME 表单
+        document.getElementById('acmeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.auto_renew = document.getElementById('auto_renew').checked;
+            try {
+                const res = await fetch('/api/ssl/acme', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+                const result = await res.json();
+                showAlert(result.message || '保存成功', 'success');
+            } catch (err) { showAlert('保存失败: ' + err.message, 'error'); }
+        });
+
+        // 证书模态框
+        function openCertModal() {
+            document.getElementById('certModal').style.display = 'flex';
+        }
+        function closeCertModal() {
+            document.getElementById('certModal').style.display = 'none';
+        }
+
+        // 申请证书
+        document.getElementById('certForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            data.wildcard = document.getElementById('cert_wildcard').checked;
+            data.force = document.getElementById('cert_force').checked;
+            data.domains = data.domains.split(',').map(d => d.trim()).filter(d => d);
+            
+            try {
+                const res = await fetch('/api/ssl/certificates', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+                const result = await res.json();
+                showAlert(result.message || '申请已提交', 'success');
+                closeCertModal();
+                loadCertificates();
+            } catch (err) { showAlert('申请失败: ' + err.message, 'error'); }
+        });
+
+        // 加载证书列表
+        async function loadCertificates() {
+            try {
+                const res = await fetch('/api/ssl/certificates');
+                const data = await res.json();
+                renderCertificates(data.certificates || []);
+            } catch (err) { console.error('加载证书失败:', err); }
+        }
+
+        function renderCertificates(certs) {
+            const tbody = document.getElementById('certBody');
+            if (!certs || certs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无证书</td></tr>';
+                return;
+            }
+            tbody.innerHTML = certs.map(c => `
+                <tr>
+                    <td>${c.domains?.join(', ') || c.domain}</td>
+                    <td>${c.wildcard ? '通配符' : '单域名'}</td>
+                    <td>${c.issuer || 'Let\'s Encrypt'}</td>
+                    <td>${c.not_after ? new Date(c.not_after).toLocaleString() : '-'}</td>
+                    <td><span class="badge ${getStatusClass(c)}">${getStatusText(c)}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="renewCert('${c.id}')">续期</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCert('${c.id}')">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusClass(c) {
+            if (!c.not_after) return 'info';
+            const days = (new Date(c.not_after) - new Date()) / (1000*60*60*24);
+            if (days < 0) return 'danger';
+            if (days < 30) return 'warning';
+            return 'success';
+        }
+
+        function getStatusText(c) {
+            if (!c.not_after) return '未知';
+            const days = (new Date(c.not_after) - new Date()) / (1000*60*60*24);
+            if (days < 0) return '已过期';
+            if (days < 30) return `${Math.ceil(days)} 天后过期`;
+            return '有效';
+        }
+
+        function requestCertificate() { openCertModal(); }
+        function renewCert(id) { showAlert('续期功能开发中', 'success'); }
+        function deleteCert(id) { if(confirm('确定删除？')) showAlert('删除功能开发中', 'success'); }
+        function testACME() { showAlert('测试功能开发中', 'success'); }
+        function saveDNSConfig() { showAlert('保存功能开发中', 'success'); }
+
+        document.addEventListener('DOMContentLoaded', loadCertificates);
+        document.getElementById('certModal').addEventListener('click', e => { if(e.target === e.currentTarget) closeCertModal(); });
+    </script>
+</body>
+</html>

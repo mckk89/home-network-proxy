@@ -1,0 +1,2 @@
+家庭网络反代 (Home Network Proxy)
+一个 Web 界面管理家庭/个人网络：DDNS、反向代理、端口转发、SSL 证书、WebDAV/FTP、WAF、计划任务、Web 终端、Docker 管理。支持 Linux/macOS/Windows/FreeBSD/OpenWrt，二进制与 Docker 双安装方式，多架构构建。MIT License.

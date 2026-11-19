@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭网络反代 - 日志中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; min-height: 100vh; }
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #fff; border-right: 1px solid #e9ecef; height: 100vh; position: fixed; left: 0; top: 0; overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e9ecef; }
+        .sidebar-header h2 { color: #333; font-size: 18px; font-weight: 600; }
+        .sidebar-nav { padding: 16px 0; }
+        .nav-section { margin-bottom: 24px; }
+        .nav-section-title { padding: 0 20px 8px; font-size: 11px; text-transform: uppercase; color: #999; font-weight: 600; letter-spacing: 0.5px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 20px; color: #555; text-decoration: none; font-size: 14px; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #f8f9fa; color: #667eea; }
+        .nav-item.active { background: #f0f2ff; color: #667eea; border-left-color: #667eea; font-weight: 500; }
+        .nav-item svg { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { font-size: 28px; font-weight: 600; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e9ecef; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .card-header h3 { font-size: 16px; font-weight: 600; color: #333; }
+        .card-body { padding: 24px; }
+        .log-container { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 13px; line-height: 1.6; background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .log-line { margin: 2px 0; padding: 2px 8px; border-radius: 4px; transition: background 0.2s; }
+        .log-line:hover { background: #2d2d2d; }
+        .log-time { color: #9cdcfe; }
+        .log-level { font-weight: 600; padding: 0 8px; border-radius: 3px; font-size: 11px; }
+        .log-level.debug { color: #6a9955; background: #1a2a1a; }
+        .log-level.info { color: #4ec9b0; background: #1a2a2a; }
+        .log-level.warn { color: #dcdcaa; background: #2a2a1a; }
+        .log-level.error { color: #f44747; background: #2a1a1a; }
+        .log-level.fatal { color: #fff; background: #a00; }
+        .log-message { color: #d4d4d4; }
+        .log-module { color: #c586c0; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #333; }
+        .form-group select, .form-group input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+        .form-row { display: flex; gap: 16px; flex-wrap: wrap; }
+        .form-row .form-group { flex: 1; min-width: 200px; }
+        .alert { padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .alert.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; display: block; }
+        .alert.error { background: #fdeaea; color: #c62828; border: 1px solid #f5c6cb; display: block; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>🍀 家庭网络反代 v3.5.0</h2></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section"><div class="nav-section-title">概览</div><a href="/" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>仪表盘</a></div>
+                <div class="nav-section"><div class="nav-section-title">系统管理</div><a href="/settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>系统设置</a><a href="/logs" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>日志中心</a></div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header"><h1>日志中心</h1></header>
+
+            <div id="alert" class="alert"></div>
+
+            <!-- 日志控制 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 日志查看</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="refreshLogs()">刷新</button>
+                        <button class="btn btn-secondary" onclick="clearLogs()">清空显示</button>
+                        <button class="btn btn-danger" onclick="downloadLogs()">下载日志</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>日志级别</label>
+                            <select id="logLevel">
+                                <option value="">全部</option>
+                                <option value="debug">Debug</option>
+                                <option value="info">Info</option>
+                                <option value="warn">Warn</option>
+                                <option value="error">Error</option>
+                                <option value="fatal">Fatal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>模块过滤</label>
+                            <select id="logModule">
+                                <option value="">全部模块</option>
+                                <option value="ddns">DDNS</option>
+                                <option value="reverse_proxy">反向代理</option>
+                                <option value="socket_proxy">端口转发</option>
+                                <option value="web">Web 界面</option>
+                                <option value="system">系统</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>显示行数</label>
+                            <input type="number" id="logLines" value="500" min="100" max="5000" step="100">
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary" style="width:100%;" onclick="loadLogs()">应用过滤</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日志显示区域 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📄 实时日志</h3>
+                    <div>
+                        <label class="form-group" style="margin:0;display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" id="autoRefresh" checked> 自动刷新 (5秒)
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="log-container" id="logContainer">
+                        <div class="log-line"><span class="log-time">[等待加载...]</span></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let autoRefreshTimer = null;
+        let lastLogCount = 0;
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+        }
+
+        // 加载日志
+        async function loadLogs() {
+            const level = document.getElementById('logLevel').value;
+            const module = document.getElementById('logModule').value;
+            const lines = document.getElementById('logLines').value;
+            
+            const params = new URLSearchParams();
+            if (level) params.append('level', level);
+            if (module) params.append('module', module);
+            params.append('lines', lines);
+            
+            try {
+                const res = await fetch('/api/logs?' + params.toString());
+                const data = await res.json();
+                renderLogs(data.logs || []);
+                lastLogCount = data.logs?.length || 0;
+            } catch (err) {
+                console.error('加载日志失败:', err);
+                showAlert('加载日志失败: ' + err.message, 'error');
+            }
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('logContainer');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div class="log-line"><span class="log-time">[暂无日志]</span></div>';
+                return;
+            }
+            
+            container.innerHTML = logs.map(log => `
+                <div class="log-line">
+                    <span class="log-time">[${log.time || ''}]</span>
+                    <span class="log-level ${log.level || 'info'}">${(log.level || 'INFO').toUpperCase()}</span>
+                    <span class="log-module">[${log.module || 'sys'}]</span>
+                    <span class="log-message">${escapeHtml(log.message || '')}</span>
+                </div>
+            `).join('');
+            
+            // 自动滚动到底部
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 刷新日志
+        function refreshLogs() {
+            loadLogs();
+        }
+
+        // 清空显示
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '<div class="log-line"><span class="log-time">[已清空显示]</span></div>';
+        }
+
+        // 下载日志
+        function downloadLogs() {
+            window.open('/api/logs/download', '_blank');
+        }
+
+        // 自动刷新
+        document.getElementById('autoRefresh').addEventListener('change', function(e) {
+            if (e.target.checked) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            autoRefreshTimer = setInterval(() => {
+                // 只有在日志数量变化时才重新渲染，避免闪烁
+                loadLogsSilent();
+            }, 5000);
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+        }
+
+        async function loadLogsSilent() {
+            const level = document.getElementById('logLevel').value;
+            const module = document.getElementById('logModule').value;
+            const lines = document.getElementById('logLines').value;
+            
+            const params = new URLSearchParams();
+            if (level) params.append('level', level);
+            if (module) params.append('module', module);
+            params.append('lines', lines);
+            
+            try {
+                const res = await fetch('/api/logs?' + params.toString());
+                const data = await res.json();
+                if (data.logs && data.logs.length !== lastLogCount) {
+                    renderLogs(data.logs);
+                    lastLogCount = data.logs.length;
+                }
+            } catch (err) {
+                console.error('自动刷新失败:', err);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLogs();
+            startAutoRefresh();
+        });
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>
