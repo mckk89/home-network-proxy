@@ -240,6 +240,10 @@ VERSION=3.5.0 sh -c "$(curl -fsSL https://raw.githubusercontent.com/mckk89/home-
 curl -fsSL -o install.sh https://raw.githubusercontent.com/mckk89/home-network-proxy/main/scripts/install.sh
 sudo sh install.sh --version 3.5.0 --product full
 
+# 如 raw.githubusercontent.com 无法访问（国内网络常见），改用 jsDelivr 镜像：
+curl -fsSL -o install.sh https://cdn.jsdelivr.net/gh/mckk89/home-network-proxy@main/scripts/install.sh
+sudo sh install.sh --version 3.5.0 --product full
+
 # 指定产品变体（默认 full）
 sudo sh install.sh --version 3.5.0 --product standard
 
