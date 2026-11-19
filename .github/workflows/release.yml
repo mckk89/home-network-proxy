@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（例如 3.5.0）'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Determine version
+        id: ver
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build all platforms
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Show artifacts
+        run: ls -lh dist/${{ steps.ver.outputs.version }}/
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: 家庭网络反代 v${{ steps.ver.outputs.version }}
+          body_path: docs/release-notes-v3.5.0.md
+          files: |
+            dist/${{ steps.ver.outputs.version }}/*.tar.gz
+            dist/${{ steps.ver.outputs.version }}/*.zip
+            dist/${{ steps.ver.outputs.version }}/SHA256SUMS
+          fail_on_unmatched_files: true

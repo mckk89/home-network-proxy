@@ -80,24 +80,24 @@ compress: build-all
 # ==================== Docker 构建 ====================
 docker-build:
 	@echo "构建 Docker 镜像..."
-	@docker build -t gdy666/home-network-proxy:$(VERSION) -t gdy666/home-network-proxy:latest .
+	@docker build -t mckk89/hnproxy:$(VERSION) -t mckk89/hnproxy:latest .
 
 docker-build-multiarch:
 	@echo "构建多架构 Docker 镜像..."
 	@docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/mips64le,linux/mipsle,linux/riscv64 \
-		-t gdy666/home-network-proxy:$(VERSION) -t gdy666/home-network-proxy:latest --push .
+		-t mckk89/hnproxy:$(VERSION) -t mckk89/hnproxy:latest --push .
 
 docker-build-full:
 	@echo "构建完整 Docker 版..."
-	@docker build -t gdy666/home-network-proxy:v3_full --target full .
+	@docker build -t mckk89/hnproxy:v3_full --target full .
 
 docker-build-standard-docker:
 	@echo "构建标准 Docker 版..."
-	@docker build -t gdy666/home-network-proxy:v3_standard_docker --target standard_docker .
+	@docker build -t mckk89/hnproxy:v3_standard_docker --target standard_docker .
 
 docker-build-lite-waf:
 	@echo "构建轻量 WAF 版..."
-	@docker build -t gdy666/home-network-proxy:v3_lite_waf --target lite_waf .
+	@docker build -t mckk89/hnproxy:v3_lite_waf --target lite_waf .
 
 # ==================== 测试 ====================
 test:

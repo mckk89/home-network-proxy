@@ -12,7 +12,7 @@ PKG_VERSION:=3.5.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://github.com/gdy666/home-network-proxy/releases/download/v$(PKG_VERSION)/
+PKG_SOURCE_URL:=https://github.com/mckk89/home-network-proxy/releases/download/v$(PKG_VERSION)/
 PKG_HASH:=skip
 
 PKG_LICENSE:=MIT

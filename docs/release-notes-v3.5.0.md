@@ -63,7 +63,7 @@ docker run -d \
   --net=host \
   -v /root/hnproxyconf:/app/conf \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  gdy666/home-network-proxy:v3
+  mckk89/hnproxy:v3
 ```
 
 访问 `http://设备IP:16601`，默认账号 `666` / 密码 `666`（**登录后立即修改**）。
@@ -71,7 +71,7 @@ docker run -d \
 ### 二进制一键安装（Linux/macOS/FreeBSD）
 
 ```bash
-curl -fsSL http://release.66666.host/install.sh | sh
+curl -fsSL https://github.com/mckk89/home-network-proxy/releases/install.sh | sh
 ```
 
 ### Windows（管理员 PowerShell）
@@ -86,7 +86,7 @@ cd "C:\Program Files\HNProxy"
 
 ```bash
 opkg update && opkg install curl
-sh -c "$(curl -fsSL http://release.66666.host/install.sh)"
+sh -c "$(curl -fsSL https://github.com/mckk89/home-network-proxy/releases/install.sh)"
 ```
 
 ## 📋 升级

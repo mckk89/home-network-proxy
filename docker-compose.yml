@@ -7,7 +7,7 @@ version: '3.8'
 services:
   # ==================== 完整 Docker 版 (完整功能 + Docker 管理) ====================
   hnproxy-full-docker:
-    image: gdy666/home-network-proxy:v3
+    image: mckk89/hnproxy:v3
     container_name: hnproxy-full-docker
     # 推荐使用 host 网络模式（Linux），支持 IPv4/IPv6
     network_mode: host
@@ -29,7 +29,7 @@ services:
 
   # ==================== 标准 Docker 版 (含 Docker 管理) ====================
   hnproxy-docker:
-    image: gdy666/home-network-proxy:v3_standard_docker
+    image: mckk89/hnproxy:v3_standard_docker
     container_name: hnproxy-docker
     network_mode: host
     # ports:
@@ -49,7 +49,7 @@ services:
 
   # ==================== 轻量 WAF 版 (含 WAF + gRPC) ====================
   hnproxy-lite-waf:
-    image: gdy666/home-network-proxy:v3_lite_waf
+    image: mckk89/hnproxy:v3_lite_waf
     container_name: hnproxy-lite-waf
     network_mode: host
     # ports:
@@ -68,7 +68,7 @@ services:
 
   # ==================== 完整版 (完整功能，无 Docker 管理) ====================
   hnproxy-full:
-    image: gdy666/home-network-proxy:v3_full
+    image: mckk89/hnproxy:v3_full
     container_name: hnproxy-full
     network_mode: host
     # ports:
@@ -87,7 +87,7 @@ services:
 
   # ==================== 增强版 (中等功能集) ====================
   hnproxy-medium:
-    image: gdy666/home-network-proxy:v3_medium
+    image: mckk89/hnproxy:v3_medium
     container_name: hnproxy-medium
     network_mode: host
     # ports:
@@ -106,7 +106,7 @@ services:
 
   # ==================== 标准版 (基础功能集) ====================
   hnproxy-standard:
-    image: gdy666/home-network-proxy:v3_standard
+    image: mckk89/hnproxy:v3_standard
     container_name: hnproxy-standard
     network_mode: host
     # ports:
@@ -125,7 +125,7 @@ services:
 
   # ==================== 轻量版 (最精简) ====================
   hnproxy-lite:
-    image: gdy666/home-network-proxy:v3_lite
+    image: mckk89/hnproxy:v3_lite
     container_name: hnproxy-lite
     network_mode: host
     # ports:

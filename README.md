@@ -121,6 +121,8 @@ home-network-proxy/
 ## 🚀 安装部署
 
 > **部署前请先选择构建变体**（见 [版本变体](#-版本变体)）。下文命令以默认镜像（完整 Docker 版）为例，其他变体替换镜像标签即可。
+>
+> ⚠️ **镜像说明**：仓库只提供源码，**不包含已发布的 Docker 镜像**。下文统一以 `mckk89/hnproxy` 作为示例镜像名，请先按 [5.3 节](#53-多架构-docker-镜像构建) 自行构建并推送到你的镜像仓库，或把命令中的镜像名替换为你自己的镜像。
 
 ### 方式一：Docker 容器部署（推荐）
 
@@ -137,7 +139,7 @@ docker run -d \
   --net=host \
   -v /root/hnproxyconf:/app/conf \
   -v /var/run/docker.sock:/var/run/docker.sock \   # 仅完整 Docker 版需要（Docker 管理功能）
-  gdy666/home-network-proxy:v3
+  mckk89/hnproxy:v3
 
 # 查看日志
 docker logs -f hnproxy
@@ -159,7 +161,7 @@ docker run -d \
   -p 80:80 \
   -p 443:443 \
   -v /path/to/hnproxyconf:/app/conf \
-  gdy666/lucky:v3_lucky_docker
+  mckk89/hnproxy:v3_standard_docker
 ```
 
 ⚠️ 端口映射模式下 IPv6 不可用；如端口访问异常请优先改回 host 模式。
@@ -175,7 +177,7 @@ cd /opt && mkdir hnproxy && cd hnproxy
 ```yaml
 services:
   hnproxy:
-    image: gdy666/home-network-proxy:v3   # 完整 Docker 版（默认）
+    image: mckk89/hnproxy:v3   # 完整 Docker 版（默认）
     # 其他变体标签：
     #   v3_standard_docker  标准 Docker 版
     #   v3_lite_waf         轻量 WAF 版
@@ -231,14 +233,15 @@ docker compose pull && docker compose up -d          # 升级（先备份 ./data
 脚本自动完成：下载对应架构二进制 → 安装到 `/usr/local/bin` → 生成配置文件 → 注册系统服务并开机自启 → 启动。
 
 ```bash
-# 在线一键安装（支持 curl / wget / fetch 三种下载器自动探测）
-curl -fsSL http://release.66666.host/install.sh | sh
+# 在线一键安装（从本仓库 main 分支拉取脚本，安装包从本仓库 Releases 下载）
+VERSION=3.5.0 sh -c "$(curl -fsSL https://raw.githubusercontent.com/mckk89/home-network-proxy/main/scripts/install.sh)"
 
-# 或从 GitHub Releases 拉取
-VERSION=3.5.0 sh -c "$(curl -fsSL https://raw.githubusercontent.com/<你的用户名>/家庭反代/main/scripts/install.sh)"
+# 或先下载脚本再执行（便于查看内容）
+curl -fsSL -o install.sh https://raw.githubusercontent.com/mckk89/home-network-proxy/main/scripts/install.sh
+sudo sh install.sh --version 3.5.0 --product full
 
 # 指定产品变体（默认 full）
-VERSION=3.5.0 PRODUCT=standard sh -c "$(curl -fsSL .../install.sh)"
+sudo sh install.sh --version 3.5.0 --product standard
 
 # 预演（不实际安装）
 sh install.sh --dry-run
@@ -331,31 +334,39 @@ sh daji.sh            # 自动识别 CPU 架构，从 /tmp 读取包
 
 ### 方式三：OpenWrt 部署
 
-#### 3.1 IPK 包安装（推荐）
+#### 3.1 IPK 包安装（需自行构建）
+
+> 本仓库**暂未随 Release 发布 IPK 包**。如需 IPK，请使用 `scripts/openwrt/` 下的 Makefile 在 OpenWrt SDK 中自行编译；也可直接用 3.2 的脚本安装 tar 二进制。
+
+编译参考：
 
 ```bash
-# 安装依赖
-opkg update && opkg install curl
-
-# 安装三个包（核心 + LuCI 插件 + 中文语言包）
-opkg install hnproxy_<版本>_<架构>.ipk
-opkg install luci-app-hnproxy_<版本>_all.ipk
-opkg install luci-i18n-hnproxy-zh-cn_<版本>_all.ipk
-
-# 启动
-/etc/init.d/hnproxy enable
-/etc/init.d/hnproxy start
+# 在 OpenWrt SDK 目录中
+cp -r scripts/openwrt package/hnproxy
+make package/hnproxy/compile V=s
+# 产物在 bin/packages/<架构>/base/ 下
 ```
 
-访问 `http://路由器IP:16601` 或 LuCI → 服务 → 家庭网络反代。
-
-> ⚠️ 安装官方 IPK 前请确认已卸载所有第三方 hnproxy IPK 包，并删除残留的 `/etc/config/hnproxy` 和 `/etc/init.d/hnproxy`。
-
-#### 3.2 一键脚本安装
+安装（编译出包后）：
 
 ```bash
-sh -c "$(curl -fsSL http://release.66666.host/install.sh)"
-# 脚本自动检测 opkg/apk，优先安装 IPK；无包则回退 tar 二进制
+opkg update && opkg install curl
+opkg install hnproxy_<版本>_<架构>.ipk
+opkg install luci-app-hnproxy_<版本>_all.ipk   # 如构建了 LuCI 插件
+opkg install luci-i18n-hnproxy-zh-cn_<版本>_all.ipk
+/etc/init.d/hnproxy enable && /etc/init.d/hnproxy start
+```
+
+> ⚠️ 安装前请确认已卸载所有第三方 hnproxy IPK 包，并删除残留的 `/etc/config/hnproxy` 和 `/etc/init.d/hnproxy`。
+
+#### 3.2 一键脚本安装（推荐，可直接用）
+
+```bash
+# 先安装 curl（部分精简固件没有）
+opkg update && opkg install curl
+
+# 安装（脚本自动识别 tar 包架构；OpenWrt 无 IPK 时回退 tar + procd 服务）
+VERSION=3.5.0 sh -c "$(curl -fsSL https://raw.githubusercontent.com/mckk89/home-network-proxy/main/scripts/install.sh)"
 ```
 
 ---
@@ -395,8 +406,8 @@ sc query HNProxy         # 状态
 #### 5.2 构建
 
 ```bash
-git clone https://github.com/<你的用户名>/家庭反代.git
-cd 家庭反代
+git clone https://github.com/mckk89/home-network-proxy.git
+cd home-network-proxy
 
 # 当前平台
 go build -ldflags="-s -w -X main.Version=3.5.0" -o hnproxy .
@@ -411,11 +422,11 @@ go build -ldflags="-s -w -X main.Version=3.5.0" -o hnproxy .
 # 需要 docker buildx
 docker buildx build \
   --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386,linux/mips64le,linux/mipsle,linux/riscv64 \
-  -t <你的用户名>/hnproxy:v3 \
+  -t mckk89/hnproxy:v3 \
   --push .
 
 # 构建单个变体
-docker build -t <你的用户名>/hnproxy:v3_standard_docker --target standard_docker .
+docker build -t mckk89/hnproxy:v3_standard_docker --target standard_docker .
 ```
 
 #### 5.4 测试

@@ -6,14 +6,14 @@
 set -euo pipefail
 
 # ==================== 配置变量 ====================
-RELEASE_URL="${RELEASE_URL:-https://release.66666.host}"
+RELEASE_URL="${RELEASE_URL:-https://github.com/mckk89/home-network-proxy/releases/download}"
 VERSION="${VERSION:-latest}"
 PRODUCT="${PRODUCT:-full}"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/hnproxy}"
 SERVICE_NAME="hnproxy"
 BINARY_NAME="hnproxy"
-GITHUB_REPO="gdy666/home-network-proxy"
+GITHUB_REPO="mckk89/home-network-proxy"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -351,9 +351,9 @@ EOF
 }
 
 install_openwrt() {
-    log_info "检测到 OpenWrt 系统，建议使用 IPK 包安装"
-    log_info "请访问: https://github.com/gdy666/luci-app-lucky/releases"
-    log_info "或使用官方安装脚本: sh -c \"\$(curl -fsSL http://release.66666.host/install.sh)\""
+    log_info "检测到 OpenWrt 系统"
+    log_info "本仓库暂未随 Release 发布 IPK；可继续使用 tar 二进制 + procd 服务安装"
+    log_info "如需 IPK，请用 scripts/openwrt/ 下的 Makefile 在 OpenWrt SDK 中自行编译"
     
     # 仍然尝试安装二进制文件
     install_binary "$1"
@@ -531,7 +531,7 @@ main() {
   --product PRODUCT     产品类型: full, standard, medium, lite, full_docker, standard_docker, lite_waf
   --dir DIR             安装目录 (默认: /usr/local/bin)
   --config-dir DIR      配置目录 (默认: /etc/hnproxy)
-  --release-url URL     发布站点 URL (默认: https://release.66666.host)
+  --release-url URL     发布站点 URL (默认: https://github.com/mckk89/home-network-proxy/releases/download)
   --update              仅更新核心程序
   --uninstall           卸载程序 (保留配置)
   --dry-run             仅检查，不实际安装
@@ -542,7 +542,7 @@ main() {
 
 示例:
   # 自动安装最新版完整版
-  curl -fsSL http://release.66666.host/install.sh | sh
+  curl -fsSL https://raw.githubusercontent.com/mckk89/home-network-proxy/main/scripts/install.sh | sh
 
   # 指定版本安装
   $0 --version 3.5.0 --product full
